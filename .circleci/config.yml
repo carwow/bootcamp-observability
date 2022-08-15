@@ -1,0 +1,116 @@
+version: 2.1
+
+orbs:
+  ruby: circleci/ruby@1.4.0
+
+references:
+  ruby: &ruby
+    image: cimg/ruby:3.1.2
+    environment:
+      DATABASE_URL: postgresql://circleci@localhost/circle_test
+      RAILS_ENV: test
+
+  postgresql: &postgresql
+    image: cimg/postgres:14.4
+    environment:
+      PGHOST: localhost
+      PGUSER: circleci
+      POSTGRES_USER: circleci
+      POSTGRES_DB: bootcamp_observability_postgres_test
+      POSTGRES_HOST_AUTH_METHOD: trust
+
+  load_db: &load_db
+    run:
+      name: Create & migrate DB
+      command: bundle config --local path vendor/bundle && bundle exec rails db:drop db:create db:migrate --trace
+
+commands:
+  cache_version:
+    steps:
+      - run:
+          name: Generate cache version
+          command: |
+            echo "v1-$(date +%Y-%m)" | tee cache_version
+
+jobs:
+  bundle:
+    working_directory: ~/bootcamp_observability
+    docker:
+      - *ruby
+    executor: ruby/default
+    steps:
+      - checkout
+      - cache_version
+      - restore_cache:
+          keys:
+            - '{{ checksum "cache_version" }}-bundler-{{ checksum "Gemfile.lock" }}'
+            - '{{ checksum "cache_version" }}-bundler-'
+      - run: |
+          gem install bundler -v $(cat Gemfile.lock | tail -1 | tr -d " ")
+
+          bundle config set frozen 'true' &&
+          bundle check || bundle install --clean --jobs=4 --retry=3 --path vendor/bundle
+          bundle clean --force
+      - save_cache:
+          key: '{{ checksum "cache_version" }}-bundler-{{ checksum "Gemfile.lock" }}'
+          paths: [~/bootcamp_observability/vendor/bundle]
+
+  ruby_assets:
+    working_directory: ~/bootcamp_observability
+    docker:
+      - *ruby
+    executor: ruby/default
+    steps:
+      - checkout
+      - cache_version
+      - restore_cache: { keys: ['{{ checksum "cache_version" }}-bundler-{{ checksum "Gemfile.lock" }}'] }
+      - restore_cache: { keys: ['{{ checksum "cache_version" }}-assets-{{ .Revision }}'] }
+      - run:
+          name: Rails compile assets
+          command: bundle config --local path vendor/bundle && bundle exec rails assets:precompile
+      - save_cache:
+          key: '{{ checksum "cache_version" }}-assets-{{ .Revision }}'
+          paths: [~/bootcamp_observability/app/assets/builds]
+  ruby_lint:
+    working_directory: ~/bootcamp_observability
+    docker:
+      - *ruby
+    executor: ruby/default
+    steps:
+      - checkout
+      - cache_version
+      - restore_cache: { keys: ['{{ checksum "cache_version" }}-bundler-{{ checksum "Gemfile.lock" }}'] }
+      - run:
+          name: Rails lint
+          command: bundle config --local path vendor/bundle && bundle exec rubocop
+
+  ruby_tests:
+    parallelism: 4
+    working_directory: ~/bootcamp_observability
+    docker:
+      - *ruby
+      - *postgresql
+    executor: ruby/default
+    steps:
+      - checkout
+      - cache_version
+      - restore_cache: { keys: ['{{ checksum "cache_version" }}-bundler-{{ checksum "Gemfile.lock" }}'] }
+      - restore_cache: { keys: ['{{ checksum "cache_version" }}-assets-{{ .Revision }}'] }
+      - *load_db
+      - run:
+          name: Rails tests
+          command: bundle config --local path vendor/bundle && bundle exec rspec
+
+workflows:
+  build_and_test:
+    jobs:
+      - bundle
+      - ruby_lint:
+          requires:
+            - bundle
+      - ruby_assets:
+          requires:
+            - bundle
+      - ruby_tests:
+          requires:
+            - ruby_assets
