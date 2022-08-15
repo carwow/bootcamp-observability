@@ -1,3 +1,7 @@
+# Build status
+
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/carwow/bootcamp-observability/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/carwow/bootcamp-observability/tree/master)
+
 # README
 
 This README would normally document whatever steps are necessary to get the
