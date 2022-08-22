@@ -2,6 +2,6 @@
 
 module HomeHelper
   def home_page_title
-    'Home | Carwow Bootcamp'
+    "Home | Carwow Bootcamp"
   end
 end
