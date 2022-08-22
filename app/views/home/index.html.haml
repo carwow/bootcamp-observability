@@ -1,4 +1,9 @@
 = content_for :page_title, home_page_title
 
-%h1.text-3xl.font-bold
-  Hello from Carwow! :)
+.text-center
+  %h1.text-5xl.font-bold{ class: "text-[#00aeff]" }
+    .inline-block{ class: "scale-x-[-1]" } 🚙
+    Hello from Carwow 🚙
+
+  .div{class: "mt-[250px]" }
+    = link_to "Go to Carwow!", "https://carwow.co.uk", class: "text-3xl rounded-lg border-2 bg-white p-2 text-[#00aeff] hover:text-white hover:bg-[#00aeff]", id: "go_to_carwow"

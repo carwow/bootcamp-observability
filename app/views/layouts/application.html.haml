@@ -1,5 +1,5 @@
 !!!
-%html
+%html.from-white.bg-gradient-to-b.to-blue-300.h-full
   %head
     %meta{:content => "text/html; charset=UTF-8", "http-equiv" => "Content-Type"}/
     %meta{:content => "width=device-width,initial-scale=1", :name => "viewport"}/
@@ -11,5 +11,5 @@
     %title
       = yield(:page_title) || 'Carwow Bootcamp'
   %body
-    %main.container.mx-auto.mt-28.px-5.flex
+    %main.container.mx-auto.mt-28.px-5
       = yield
